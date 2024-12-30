@@ -34,7 +34,8 @@ class Player():
         self.deck = deck
         self.offset = offset
         self.showing = [0] * 8      # カードの状態 0:存在しない（ドロー要）, 1:ドロー中:, 2:ターン中, 3:存在する
-        self.card_list = []             # 場に出ているカードのリスト
+        self.card_list = []         # 場に出ているカードのリスト
+        self.select = 0             # カーソルの位置
 
     def call_random_monster(self):
         word1 = self.deck.sample()
@@ -47,18 +48,34 @@ class Player():
         df_word = self.deck.sample()["word"]
         self.deck = self.deck.drop(df_word.index)
         word = df_word.iloc[0]
-        card = Card(type="word", is_face=True, word=word, pos1=pos1, pos2=pos2)
+        card = Card(type="word", is_face=False, word=word, pos1=pos1, pos2=pos2)
         return card
 
 class Card(pygame.sprite.Sprite):
-    def __init__(self, type=None, is_face=True, **kwargs):
+    def __init__(self, type, pos1, pos2, is_face=True, **kwargs):
         super(Card, self).__init__()
         # カードの種別
+        width, height = 80, 140                     # 単語カードのときのサイズ
+        border_radius = 10                          # 単語カードのときの角丸
+        self.visible = True                         # 表示するかどうか（の初期値）
+#         self.pos = pos1                              # 座標
+        self.pos1 = pos1
+        self.pos2 = pos2
         if type == "word":
-            width = 80
-            height = 140
             font_size = 60
             font = pygame.font.SysFont(FONT_WORD, font_size)
+        elif type == "cursor":
+            width += 20
+            height += 20
+            border_radius += 10
+            surface = pygame.Surface((width, height), flags=SRCALPHA)
+            surface.fill(TRANS)
+            pygame.draw.rect(surface, RED, (0, 0, width, height), 10, 20)
+            self.image = surface
+            self.rect = surface.get_rect()
+            self.rect.center = pos1
+            self.visible = False                    # カーソルは定義した直後では表示しない
+            return
         elif type == "title":
             width = 100
             height = 150
@@ -67,20 +84,19 @@ class Card(pygame.sprite.Sprite):
         else:
             print("unknown type")
             sys.exit()
-
-        self.x, self.y = 0, 0
+        self.width = width
+        self.height = height
         self.is_face = is_face
         surface = pygame.Surface((width, height), flags=SRCALPHA)
         self.rect = surface.get_rect()
-        self.rect.center = 0, 0
+        self.rect.center = self.pos1
         surface.fill(TRANS)
 
-        if is_face:
-            face = surface.copy()
-            self.word = kwargs.get("word")
-            pygame.draw.rect(face, WHITE, (0, 0, width, height), 0, 10)
-            pygame.draw.rect(face, BLACK, (0, 0, width, height), 1, 10)
-        # 表面（言葉）
+        face = surface.copy()
+        pygame.draw.rect(face, WHITE, (0, 0, width, height), 0, border_radius)
+        pygame.draw.rect(face, BLACK, (0, 0, width, height), 1, border_radius)
+        self.word = kwargs.get("word")
+        if self.word is not None:
             word_count = len(self.word)
             word_height = font_size * word_count
             word_area = height * 0.8
@@ -101,29 +117,19 @@ class Card(pygame.sprite.Sprite):
                     temp = pygame.transform.scale(temp, (font_size, letter_height))
                 face.blit(temp, (x,y))
                 y += letter_height
-            self.base_image = face
-            self.image = face
+        self.base_face = face
 
-        if not is_face:
-        # 裏面: pos1とpos2が必要
-            back = surface.copy()
-#            color = kwargs["color"]
-#            pygame.draw.rect(back, color, (0, 0, width, height), 0, 10)
-#            pygame.draw.rect(back, BLACK, (0, 0, width, height), 3, 10)
-            pygame.draw.rect(back, BLACK, (0, 0, width, height), 0, 10)
-            image = pygame.image.load(r"./image/magicsquare.png")
-            image_size = min(width, height)
-            image = pygame.transform.scale(image, (image_size, image_size))
-            image_rect = image.get_rect(center=(width//2, height//2))
-            back.blit(image, image_rect)
-            self.base_image = back
-            self.image = back
+        # 裏面
+        back = surface.copy()
+        pygame.draw.rect(back, BLACK, (0, 0, width, height), 0, 10)
+        image = pygame.image.load(r"./image/magicsquare.png")
+        image_size = min(width, height)
+        image = pygame.transform.scale(image, (image_size, image_size))
+        image_rect = image.get_rect(center=(width//2, height//2))
+        back.blit(image, image_rect)
+        self.base_back = back
 
-        self.pos1 = kwargs.get("pos1")
-        self.pos2 = kwargs.get("pos2")
-        self.rect.center = self.pos1
-        self.width = width
-        self.height = height
+        self.image = face if is_face else back
 
     def move_linear(self, duration_time, elapsed_time):
         t = elapsed_time / duration_time
@@ -131,16 +137,26 @@ class Card(pygame.sprite.Sprite):
         pos = pygame.math.Vector2(self.pos1) * (1 - t) + pygame.math.Vector2(self.pos2) * t
         self.rect.center = pos
 
-    def animated_turn(self, opposite:Card, angle):
+    def animated_turn(self, angle):
         cos = math.cos(math.radians(angle))
         width = abs(self.width * cos)
         height = self.height
-        image = self.base_image if cos>0 else opposite.base_image
+        image = self.base_back if cos>0 else self.base_face
         self.image = pygame.transform.scale(image, (width, height))
         self.rect = self.image.get_rect(center=self.rect.center)
 
-
-
+class Cursor(pygame.sprite.Sprite):
+    def __init__(self, player:Player, size):
+        super(Cursor, self).__init__()
+        w, h = size
+        w += 20
+        h += 20
+        surface = pygame.Surface((w, h), flags=SRCALPHA)
+        surface.fill(TRANS)
+        pygame.draw.rect(surface, RED, (0, 0, w, h), 10, 20)
+        self.image = surface
+        self.rect = surface.get_rect()
+        self.rect.center = 0, 0
 
 class Monster():
     def __init__(self, word1, word2):
@@ -204,30 +220,3 @@ def battle(player1:Player, player2:Player):
             print("ダメージを与えられない！")
     return winner
 
-
-def game():
-    words = Words()
-    player1_name = words.make_random_name()
-    player2_name = words.make_random_name()
-    deck1, deck2 = words.make_deck()
-    player1 = Player(player1_name, deck=deck1)
-    player2 = Player(player2_name, deck=deck2)
-
-    while True:
-        for player in [player1, player2]:
-            player.call_random_monster()
-
-        winner = battle(player1, player2)
-        if winner != "":
-            print(f"winner {winner.name}")
-            break
-
-        if len(player1.deck) == 0:
-            print("カード切れ")
-            break
-
-        input()
-
-
-if __name__ == "__main__":
-    game()

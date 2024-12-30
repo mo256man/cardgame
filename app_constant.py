@@ -6,4 +6,5 @@ WHITE = (255,255,255,255)
 GRAY = (128,128,128,255)
 TRANS = (0,0,0,0)
 
-FONT_WORD = "ｄｆｇ麗雅宋"
+FONT_WORD = "uddigikyokashonpb"
+SHOW_CARD_NUM = 8

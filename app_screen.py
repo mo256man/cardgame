@@ -7,7 +7,7 @@ import numpy as np
 from app_card import *
 from app_constant import *
 
-class Screen():
+class UI():
     def __init__(self, player1:Player, player2:Player):
         pygame.init()
         self.width = 1280
@@ -17,6 +17,7 @@ class Screen():
         surface = pygame.Surface((self.width, self.height))
         surface.fill(WHITE)
         self.clock = pygame.time.Clock()
+        self.sp_group = pygame.sprite.LayeredUpdates()      # スプライトグループ（正確にはレイヤー）はScreenに属するようにする
 
         # プレイヤー名
         x, y = 20, 10
@@ -37,14 +38,41 @@ class Screen():
         self.deckpos = (deckpos1, deckpos2)                                     # テープル上のデッキの座標
 
         # カード配置位置
-        pos2d = [[(r*100+220, 480+150*c) for r in range(4)] for c in range(2)]  # 2行3列の座標群
-        cardpos1 = np.array(pos2d).reshape(-1,2)                                # プレイヤー1のカードの座標 1次元にする
+        positions = [[(r*100+220, 480+150*c) for r in range(4)] for c in range(2)]  # 2行3列の座標群
+        cardpos1 = np.array(positions).reshape(-1,2)                                # プレイヤー1のカードの座標 1次元にする
         cardpos2 = cardpos1 + np.array((self.width//2, 0))                      # プレイヤー2のカードの座標
         self.cardpos = (cardpos1.tolist(),  cardpos2.tolist())
+
+        # カード開示位置
+        positions = [(self.width//4 , 100+150*c) for c in range(2)]              # 座標群
+        showpos1 = np.array(positions).reshape(-1,2)                            # プレイヤー1のカードの座標 1次元にする
+        showpos2 = cardpos1 + np.array((self.width//2, 0))                      # プレイヤー2のカードの座標
+        self.showpos = (showpos1.tolist(),  showpos2.tolist())
 
         self.base_surface = surface
         self.surface = surface
 
+    def move_card(self, card:Card):
+        DURATION_TIME = 0.2                                                 # カードドローに要する時間
+        self.sp_group.move_to_front(card)                                   # アニメーションするカードをレイヤーの一番上へ移動
+        start_time = pygame.time.get_ticks()                                # スタート時間
+        elapsed_time = 0                                                    # 経過時間
+        while elapsed_time < DURATION_TIME:
+            elapsed_time = (pygame.time.get_ticks() - start_time) / 1000    # 経過時間（秒）
+            t = min(1, elapsed_time / DURATION_TIME)                        # スタート～ゴールを0～1で表す
+            x = card.pos1[0] * (1-t) + card.pos2[0] * t
+            y = card.pos1[1] * (1-t) + card.pos2[1] * t
+            card.rect.center = (x, y)
+            self.show()
+
+    def turn_card(self, card:Card):
+        for angle in range(0, 180+1, 10):                                   # 0度から180度まで
+            card.animated_turn(angle)                                       # カードをめくる
+            self.show()
+
+
+
+    """
     def deal_card(self, player:Player, i, sp_group:pygame.sprite.Group, turn:bool):
         DURATION_TIME = 0.2                                         # カードドローに要する時間
         while True:
@@ -70,16 +98,19 @@ class Screen():
                 player.showing[i] = 3                       # 設置完了
                 break                                       # 無限ループを抜ける
 
-            self.show(sp_group)
+            self.show()
+    """
 
-    def draw(self, player:Player, cnt):
-        cardpos = self.cardpos1 if player.offset == 0 else self.cardpos2
-        return cardpos[cnt]
+#    def draw(self, player:Player, cnt):
+#        cardpos = self.cardpos1 if player.offset == 0 else self.cardpos2
+#        return cardpos[cnt]
 
-    def show(self, sp_group:pygame.sprite.Group):
+    def show(self):
         self.surface = self.base_surface.copy()
         self.screen.blit(self.surface, (0, 0))
-        sp_group.draw(self.screen)
+        for sprite in self.sp_group:
+            if sprite.visible:
+                self.screen.blit(sprite.image, sprite.rect)
         pygame.display.flip()
         self.clock.tick(60)
 
