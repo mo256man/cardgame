@@ -34,7 +34,7 @@ class Player():
         self.deck = deck
         self.offset = offset
         self.showing = [0] * 8      # カードの状態 0:存在しない（ドロー要）, 1:ドロー中:, 2:ターン中, 3:存在する
-        self.card_list = []         # 場に出ているカードのリスト
+        self.card_list = [None] * 8 # 場に出ているカードのリスト
         self.select = 0             # カーソルの位置
 
     def call_random_monster(self):

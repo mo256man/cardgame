@@ -70,7 +70,14 @@ class UI():
             card.animated_turn(angle)                                       # カードをめくる
             self.show()
 
-
+    def fade_sprite(self, is_fade_in):
+        rng = range(0, 255+1, 32) if is_fade_in else range(255, 0-1-1, -32)
+        for alpha in rng:
+            print("alpha:", alpha)
+            for sprite in self.sp_group:
+                if sprite.visible:
+                    sprite.image.set_alpha(alpha)
+            self.show()
 
     """
     def deal_card(self, player:Player, i, sp_group:pygame.sprite.Group, turn:bool):

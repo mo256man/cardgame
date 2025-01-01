@@ -33,9 +33,8 @@ class Game():
                 deckpos = self.ui.deckpos[p]                            # デッキの位置
                 cardpos = self.ui.cardpos[p][i]                         # カードの位置
                 card = player.select_random_card(pos1=deckpos, pos2=cardpos)
-#                 card = Card(type="word", pos=deckpos, is_face=False, pos2=cardpos)
                 self.ui.sp_group.add(card)
-                player.card_list.append(card)
+                player.card_list[i] = card
                 self.ui.move_card(card)
                 if p == 0:
                     self.ui.turn_card(card)
@@ -48,8 +47,8 @@ class Game():
                 player.card_list.append(card)                           # カードをリストに追加
         """
         # カーソル
-        self.cursor1 = Card(type="cursor")
-        self.cursor1.rect.center = self.ui.cardpos[0][0]                  # カーソル位置の初期値
+        pos = self.ui.cardpos[0][0]
+        self.cursor1 = Card(type="cursor", pos1=pos, pos2=pos)
 
 
     """
@@ -66,42 +65,53 @@ class Game():
     def play(self):
         self.cursor1.visible = True
         self.ui.sp_group.add(self.cursor1)
-        while True:
+
+        while True:                                     # 勝負がつくまでループ
             show_cnt = 0
-            self.ui.show()
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    key = event.key
-                    if key == pygame.K_RIGHT:
-                        self.player1.select = (self.player1.select + 1) % 8
-                    elif key == pygame.K_LEFT:
-                        self.player1.select = (self.player1.select - 1) % 8
-                    elif key == pygame.K_UP:
-                        self.player1.select = (self.player1.select + 4) % 8
-                    elif key == pygame.K_DOWN:
-                        self.player1.select = (self.player1.select - 4) % 8
-                    elif key == pygame.K_SPACE:
-                        card = self.player1.card_list[self.player1.select]
-                        card.pos1 = card.pos2
-                        card.pos2 = self.ui.showpos[0][show_cnt]
-                        self.ui.deal_card(self.player1, self.player1.select, self.sp_group, False)
+            while True:                                 # 1ターン分
+                self.ui.show()
+                for event in pygame.event.get():
+                    if event.type == QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    elif event.type == pygame.KEYDOWN:
+                        key = event.key
+                        if key == pygame.K_RIGHT:
+                            self.player1.select = (self.player1.select + 1) % 8
+                        elif key == pygame.K_LEFT:
+                            self.player1.select = (self.player1.select - 1) % 8
+                        elif key == pygame.K_UP:
+                            self.player1.select = (self.player1.select + 4) % 8
+                        elif key == pygame.K_DOWN:
+                            self.player1.select = (self.player1.select - 4) % 8
+                        elif key == pygame.K_SPACE:
+                            if show_cnt < 2:
+                                i = self.player1.select                         # 選択された位置
+                                if self.player1.card_list[i] is not None:       # そこにカードがあるならば
+                                    card = self.player1.card_list[i]
+                                    self.player1.card_list[i] = None
+                                    card.pos1 = card.pos2
+                                    card.pos2 = self.ui.showpos[0][show_cnt]
+                                    # self.ui.deal_card(self.player1, self.player1.select, self.sp_group, False)
+                                    self.ui.move_card(card)
+                                    show_cnt += 1
+                                    print(show_cnt)
+                            else:
+                                self.ui.fade_sprite(is_fade_in=False)
+                                print("モンスター召喚")
+                        self.cursor1.rect.center = self.ui.cardpos[0][self.player1.select]
+                        self.ui.screen.blit(self.cursor1.image, self.cursor1.rect)
+                        pygame.display.flip()
+                        self.ui.clock.tick(60)
 
-                    self.cursor1.rect.center = self.ui.cardpos[0][self.player1.select]
-                    self.ui.screen.blit(self.cursor1.image, self.cursor1.rect)
-                    pygame.display.flip()
-                    self.ui.clock.tick(60)
-
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    print("start")
-                    pygame.quit()
-                    sys.exit()
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        print("start")
+                        pygame.quit()
+                        sys.exit()
 
 def demo():
     game = Game()
-    game.deal_cards()
+#    game.deal_cards()
 #    game.draw_demo()
     game.play()
     print("done.")
