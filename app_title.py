@@ -4,7 +4,7 @@ import pygame
 from pygame.locals import *
 
 from app_game import Game
-from app_card import Card
+from app_sprite import Card
 from app_constant import *
 
 class Title(Game):

@@ -4,7 +4,7 @@ import random
 import sys
 import cv2
 import numpy as np
-from app_card import *
+from app_sprite import *
 from app_constant import *
 
 class UI():
@@ -15,7 +15,7 @@ class UI():
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption = "コトダマモンスター"
         surface = pygame.Surface((self.width, self.height))
-        surface.fill(WHITE)
+        surface.fill(BLACK)
         self.clock = pygame.time.Clock()
         self.sp_group = pygame.sprite.LayeredUpdates()      # スプライトグループ（正確にはレイヤー）はScreenに属するようにする
 
@@ -49,6 +49,19 @@ class UI():
         showpos2 = cardpos1 + np.array((self.width//2, 0))                      # プレイヤー2のカードの座標
         self.showpos = (showpos1.tolist(),  showpos2.tolist())
 
+        # 魔法陣
+        x1, x2 = self.width//4, self.width//4 * 3
+        y = 500
+        magicsquare1 = MagicSquare("magicsquare1", (x1, y))
+        magicsquare2 = MagicSquare("magicsquare2", (x2, y))
+        self.sp_group.add(magicsquare1)
+        self.sp_group.add(magicsquare2)
+        self.magicsquares = [magicsquare1, magicsquare2]
+
+        # 召喚の演出
+        flame1 = Flame("frame1", (self.width//4, 300))
+        flame2 = Flame("frame2", (3 * self.width//4, 300))
+        self.flames = [flame1, flame2]
         self.base_surface = surface
         self.surface = surface
 
@@ -73,12 +86,18 @@ class UI():
     def fade_sprite(self, is_fade_in):
         rng = range(0, 255+1, 32) if is_fade_in else range(255, 0-1-1, -32)
         for alpha in rng:
-            print("alpha:", alpha)
             for sprite in self.sp_group:
-                if sprite.visible:
+                if sprite.fade:
                     sprite.image.set_alpha(alpha)
             self.show()
-
+            pygame.time.delay(200)
+    
+    def show_magicsquare(self):
+        for sprite in self.sp_group:
+            sprite.visible = False
+        for magicsquare in self.magicsquares:
+            magicsquare.visible = True
+        self.fade_sprite(is_fade_in=True)
     """
     def deal_card(self, player:Player, i, sp_group:pygame.sprite.Group, turn:bool):
         DURATION_TIME = 0.2                                         # カードドローに要する時間

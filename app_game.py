@@ -4,7 +4,7 @@ import random
 import sys
 import cv2
 import numpy as np
-from app_card import *
+from app_sprite import *
 from app_constant import *
 from app_screen import UI
 
@@ -23,7 +23,8 @@ class Game():
         # デッキのカード（裏）
         for p in [0, 1]:                                                # プレイヤー1とプレイヤー2について
             deckpos = self.ui.deckpos[p]                                # デッキの位置
-            card = Card(type="word", pos1=deckpos, pos2=deckpos, is_face=False)        # カードの裏
+            name = f"ura{p}"                                            # デッキの名前
+            card = Card(type="word",name=name, pos1=deckpos, pos2=deckpos, is_face=False)        # カードの裏
             self.ui.sp_group.add(card)                                  # グループに定義
 
         # 最初に場に出すカードを定義し、配る
@@ -32,35 +33,17 @@ class Game():
             for i in range(SHOW_CARD_NUM):
                 deckpos = self.ui.deckpos[p]                            # デッキの位置
                 cardpos = self.ui.cardpos[p][i]                         # カードの位置
-                card = player.select_random_card(pos1=deckpos, pos2=cardpos)
+                name = f"card{p}_{i}"
+                card = player.select_random_card(name, pos1=deckpos, pos2=cardpos)
                 self.ui.sp_group.add(card)
                 player.card_list[i] = card
                 self.ui.move_card(card)
                 if p == 0:
                     self.ui.turn_card(card)
 
-        """"
-        for p, (player, deckpos, cardpos) in enumerate(zip(self.players, self.ui.deckpos, self.ui.cardpos)):
-            for i in range(8):                                          # 各カードについて
-                card = Card(type="word", is_face=False, pos1=deckpos, pos2=cardpos[i])       # カード定義
-                self.ui.sp_group.add(card)                                 # カードをグループに追加
-                player.card_list.append(card)                           # カードをリストに追加
-        """
         # カーソル
         pos = self.ui.cardpos[0][0]
-        self.cursor1 = Card(type="cursor", pos1=pos, pos2=pos)
-
-
-    """
-    def draw_demo(self):
-        # 両者にカードを配るデモ
-        for p, player in enumerate(self.players):                       # 各プレイヤーについて
-            for i in range(8):                                          # 各カードについて
-                if player.showing[i] != 3:                              # 3（配置済み）でなければ
-                    is_turn = not bool(player.offset)                   # プレイヤー1はカードをめくる　プレイヤー2はめくらない
-                    self.ui.deal_card(player, i, self.sp_group, is_turn)       # その場所にカードを配ってカードをめくる
-        pygame.event.clear()
-    """
+        self.cursor1 = Card("cursor", "cursor1", pos1=pos, pos2=pos)
 
     def play(self):
         self.cursor1.visible = True
@@ -95,10 +78,10 @@ class Game():
                                     # self.ui.deal_card(self.player1, self.player1.select, self.sp_group, False)
                                     self.ui.move_card(card)
                                     show_cnt += 1
-                                    print(show_cnt)
-                            else:
+                            if show_cnt == 2:
                                 self.ui.fade_sprite(is_fade_in=False)
                                 print("モンスター召喚")
+                                self.ui.show_magicsquare()
                         self.cursor1.rect.center = self.ui.cardpos[0][self.player1.select]
                         self.ui.screen.blit(self.cursor1.image, self.cursor1.rect)
                         pygame.display.flip()
